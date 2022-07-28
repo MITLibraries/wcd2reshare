@@ -1,4 +1,22 @@
+import logging
+import os
 import urllib.parse
+
+import sentry_sdk
+from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+env = os.getenv("WORKSPACE")
+if sentry_dsn := os.getenv("SENTRY_DSN"):
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        environment=env,
+        integrations=[
+            AwsLambdaIntegration(),
+        ],
+    )
+    logger.info("Sentry DSN found, exceptions will be sent to Sentry with env=%s", env)
 
 
 def query_formatter(args: dict) -> str:
@@ -55,6 +73,10 @@ def lambda_handler(event: dict, context: dict) -> dict:
     Reshare / Vufind. Return an object representing an HTTP redirect response to
     ReShare / Vufind, using the query string if one was built.
     """
+
+    if env is None:
+        raise ValueError("WORKSPACE environment variable is required")
+
     location = "https://borrowdirect.reshare.indexdata.com/Search/Results?"
 
     if args := event.get("queryStringParameters"):
