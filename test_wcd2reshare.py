@@ -1,11 +1,37 @@
+import os
+from importlib import reload
+
 import pytest
 
 import wcd2reshare
 
 
+@pytest.fixture(autouse=True)
+def test_env():
+    os.environ = {
+        "WORKSPACE": "test",
+    }
+    return
+
+
 @pytest.fixture
 def baseURL():
     return "https://borrowdirect.reshare.indexdata.com/Search/Results?"
+
+
+def test_configures_sentry_if_dsn_present(caplog, monkeypatch):
+    monkeypatch.setenv("SENTRY_DSN", "https://1234567890@00000.ingest.sentry.io/123456")
+    reload(wcd2reshare)
+    assert (
+        "Sentry DSN found, exceptions will be sent to Sentry with env=test"
+        in caplog.text
+    )
+
+
+def test_doesnt_configure_sentry_if_dsn_not_present(caplog, monkeypatch):
+    monkeypatch.delenv("SENTRY_DSN", raising=False)
+    reload(wcd2reshare)
+    assert "Sentry DSN found" not in caplog.text
 
 
 def test_isbn():
@@ -108,6 +134,19 @@ def test_ctitle_priority():
 def test_fields_of_no_interest_ignored():
     params = {"rft.popcorn": "sure", "rft.isbn": "978-3-16-148410-0"}
     assert wcd2reshare.query_formatter(params) == "type=ISN&lookfor=978-3-16-148410-0"
+
+
+def test_lambda_handler_workspace_missing(caplog, monkeypatch):
+    monkeypatch.delenv("WORKSPACE")
+    reload(wcd2reshare)
+    with pytest.raises(ValueError):
+        wcd2reshare.lambda_handler({}, {})
+
+
+def test_lambda_handler_workspace_found(caplog):
+    reload(wcd2reshare)
+    wcd2reshare.lambda_handler({}, {})
+    assert "Required WORKSPACE env is None" not in caplog.text
 
 
 def test_lambda_handler_with_query(baseURL):
