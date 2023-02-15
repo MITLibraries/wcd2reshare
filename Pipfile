@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 sentry-sdk = "*"
+requests = "*"
+
 
 [dev-packages]
 bandit = "*"
@@ -14,6 +16,8 @@ flake8 = "*"
 isort = "*"
 mypy = "*"
 pytest = "*"
+requests-mock = "*"
+types-requests = "*"
 
 [requires]
 python_version = "3.9"
