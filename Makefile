@@ -6,40 +6,56 @@ ECR_URL_DEV:=222053980223.dkr.ecr.us-east-1.amazonaws.com/wcd2reshare-dev
 FUNCTION_DEV:=wcd2reshare-dev
 ### End of Terraform-generated header                               ###
 
-### Dependency commands ###
-install: ## Install dependencies
-	pipenv install --dev
+#######################
+# Dependency commands
+#######################
 
-update: install ## Update all Python dependencies
+install: # Install Python dependencies
+	pipenv install --dev
+	pipenv run pre-commit install
+
+update: install # Update Python dependencies
 	pipenv clean
 	pipenv update --dev
-	pipenv requirements
 
-### Test commands ###
-test: ## Run tests and print a coverage report
-	pipenv run coverage run --include=wcd2reshare.py -m pytest
+######################
+# Unit test commands
+######################
+
+test: # Run tests and print a coverage report
+	pipenv run coverage run --source=lambdas -m pytest -vv
 	pipenv run coverage report -m
 
-coveralls: test
+coveralls: test # Write coverage data to an LCOV report
 	pipenv run coverage lcov -o ./coverage/lcov.info
 
-### Lint commands ###
-lint: bandit black flake8 isort mypy ## Lint the repo
+####################################
+# Code quality and safety commands
+####################################
 
-bandit:
-	pipenv run bandit -r wcd2reshare.py
+lint: black mypy ruff safety # Run linters
 
-black:
+black: # Run 'black' linter and print a preview of suggested changes
 	pipenv run black --check --diff .
 
-flake8:
-	pipenv run flake8 .
-
-isort:
-	pipenv run isort . --diff
-
-mypy:
+mypy: # Run 'mypy' linter
 	pipenv run mypy .
+
+ruff: # Run 'ruff' linter and print a preview of errors
+	pipenv run ruff check .
+
+safety: # Check for security vulnerabilities and verify Pipfile.lock is up-to-date
+	pipenv check
+	pipenv verify
+
+lint-apply: # Apply changes with 'black' and resolve 'fixable errors' with 'ruff'
+	black-apply ruff-apply 
+
+black-apply: # Apply changes with 'black'
+	pipenv run black .
+
+ruff-apply: # Resolve 'fixable errors' with 'ruff'
+	pipenv run ruff check --fix .
 
 ### Terraform-generated Developer Deploy Commands for Dev environment ###
 dist-dev: ## Build docker container (intended for developer-based manual build)

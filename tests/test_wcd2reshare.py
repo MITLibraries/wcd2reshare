@@ -1,44 +1,27 @@
-import os
 from importlib import reload
 from unittest.mock import MagicMock
 
 import pytest
 import requests_mock
 
-import wcd2reshare
+from lambdas import wcd2reshare
 
 
 @pytest.fixture(autouse=True)
-def test_env():
-    os.environ = {
-        "WORKSPACE": "test",
-    }
-    return
+def test_env(monkeypatch):
+    monkeypatch.setenv("WORKSPACE", "test")
 
 
 @pytest.fixture
-def baseURL():
+def base_url():
     return "https://borrowdirect.reshare.indexdata.com/Search/Results?"
-
-
-@pytest.fixture
-def mocked_searchHasResults(*args, **kwargs):
-    if args[0].get("oclc"):
-        return False
-
-    if args[0].get("isbn"):
-        return False
-
-    if args[0].get("title"):
-        return True
 
 
 def test_configures_sentry_if_dsn_present(caplog, monkeypatch):
     monkeypatch.setenv("SENTRY_DSN", "https://1234567890@00000.ingest.sentry.io/123456")
     reload(wcd2reshare)
     assert (
-        "Sentry DSN found, exceptions will be sent to Sentry with env=test"
-        in caplog.text
+        "Sentry DSN found, exceptions will be sent to Sentry with env=test" in caplog.text
     )
 
 
@@ -54,10 +37,10 @@ def test_query_formatter():
         "rft.title": "salad days",
         "rft_id": "info%3Aoclcnum%2F12345678",
     }
-    SearchStrings = wcd2reshare.query_formatter(params)
-    assert SearchStrings["oclc"] == "type=oclc_num&lookfor=12345678"
-    assert SearchStrings["isbn"] == "type=ISN&lookfor=978-3-16-148410-0"
-    assert SearchStrings["title"] == "type=title&lookfor=salad+days"
+    search_strings = wcd2reshare.query_formatter(params)
+    assert search_strings["oclc"] == "type=oclc_num&lookfor=12345678"
+    assert search_strings["isbn"] == "type=ISN&lookfor=978-3-16-148410-0"
+    assert search_strings["title"] == "type=title&lookfor=salad+days"
 
 
 def test_query_formatter_title_with_author():
@@ -115,80 +98,84 @@ def test_query_formatter_fields_of_no_interest_ignored():
     )
 
 
-def test_searchHasResults_is_true_when_results_are_returned():
-    searchString = "successful search string"
+def test_search_has_results_is_true_when_results_are_returned():
+    search_string = "successful search string"
     with requests_mock.Mocker() as m:
         m.request(requests_mock.ANY, requests_mock.ANY, json={"resultCount": 1})
-        assert wcd2reshare.searchHasResults(searchString) is True
+        assert wcd2reshare.search_has_results(search_string) is True
 
 
-def test_searchHasResults_is_false_when_results_are_not_returned():
-    searchString = "failing search string"
+def test_search_has_results_is_false_when_results_are_not_returned():
+    search_string = "failing search string"
     with requests_mock.Mocker() as m:
         m.request(requests_mock.ANY, requests_mock.ANY, json={"resultCount": 0})
-        assert wcd2reshare.searchHasResults(searchString) is False
+        assert wcd2reshare.search_has_results(search_string) is False
 
 
-def test_buildTitleSearchString_no_author():
+def test_build_title_search_string_no_author():
     title = "salad days"
-    assert wcd2reshare.buildTitleSearchString(title, aulast=None) == [
+    assert wcd2reshare.build_title_search_string(title, aulast=None) == [
         ("type", "title"),
         ("lookfor", title),
     ]
 
 
-def test_selectSearchStrategy_no_success():
-    searchStrings = {
+def test_select_search_strategy_no_success():
+    search_strings = {
         "oclc": "type=oclc_num&lookfor=12345678",
         "isbn": "type=ISN&lookfor=978-3-16-148410-0",
         "title": "type=title&lookfor=salad+days",
     }
-    wcd2reshare.searchHasResults = MagicMock(side_effect=[False, False, False])
-    selectedStrategy = wcd2reshare.selectSearchStrategy(searchStrings)
-    assert wcd2reshare.searchHasResults.call_count == 3
-    assert selectedStrategy == ""
+    expected_call_count = 3
+    wcd2reshare.search_has_results = MagicMock(side_effect=[False, False, False])
+    selected_strategy = wcd2reshare.select_search_strategy(search_strings)
+    assert wcd2reshare.search_has_results.call_count == expected_call_count
+    assert selected_strategy == ""
 
 
-def test_selectSearchStrategy_oclc_success():
-    searchStrings = {
+def test_select_search_strategy_oclc_success():
+    search_strings = {
         "oclc": "type=oclc_num&lookfor=12345678",
         "isbn": "type=ISN&lookfor=978-3-16-148410-0",
         "title": "type=title&lookfor=salad+days",
     }
-    wcd2reshare.searchHasResults = MagicMock(side_effect=[True])
-    selectedStrategy = wcd2reshare.selectSearchStrategy(searchStrings)
-    assert wcd2reshare.searchHasResults.call_count == 1
-    assert selectedStrategy == searchStrings["oclc"]
+    expected_call_count = 1
+    wcd2reshare.search_has_results = MagicMock(side_effect=[True])
+    selected_strategy = wcd2reshare.select_search_strategy(search_strings)
+    assert wcd2reshare.search_has_results.call_count == expected_call_count
+    assert selected_strategy == search_strings["oclc"]
 
 
-def test_selectSearchStrategy_isbn_success():
-    searchStrings = {
+def test_select_search_strategy_isbn_success():
+    search_strings = {
         "oclc": "type=oclc_num&lookfor=12345678",
         "isbn": "type=ISN&lookfor=978-3-16-148410-0",
         "title": "type=title&lookfor=salad+days",
     }
-    wcd2reshare.searchHasResults = MagicMock(side_effect=[False, True])
-    selectedStrategy = wcd2reshare.selectSearchStrategy(searchStrings)
-    assert wcd2reshare.searchHasResults.call_count == 2
-    assert selectedStrategy == searchStrings["isbn"]
+    expected_call_count = 2
+    wcd2reshare.search_has_results = MagicMock(side_effect=[False, True])
+    selected_strategy = wcd2reshare.select_search_strategy(search_strings)
+    assert wcd2reshare.search_has_results.call_count == expected_call_count
+    assert selected_strategy == search_strings["isbn"]
 
 
-def test_selectSearchStrategy_title_success():
-    searchStrings = {
+def test_select_search_strategy_title_success():
+    search_strings = {
         "oclc": "type=oclc_num&lookfor=12345678",
         "isbn": "type=ISN&lookfor=978-3-16-148410-0",
         "title": "type=title&lookfor=salad+days",
     }
-    wcd2reshare.searchHasResults = MagicMock(side_effect=[False, False, True])
-    selectedStrategy = wcd2reshare.selectSearchStrategy(searchStrings)
-    assert wcd2reshare.searchHasResults.call_count == 3
-    assert selectedStrategy == searchStrings["title"]
+    expected_call_count = 3
+    wcd2reshare.search_has_results = MagicMock(side_effect=[False, False, True])
+    selected_strategy = wcd2reshare.select_search_strategy(search_strings)
+    assert wcd2reshare.search_has_results.call_count == expected_call_count
+    assert selected_strategy == search_strings["title"]
 
 
-def test_buildTitleSearchString_with_author():
+def test_build_title_search_string_with_author():
     title = "salad days"
     aulast = "ranch"
-    assert wcd2reshare.buildTitleSearchString(title, aulast) == [
+    assert wcd2reshare.build_title_search_string(title, aulast) == [
         ("join", "AND"),
         ("type0[]", "title"),
         ("lookfor0[]", title),
@@ -197,10 +184,10 @@ def test_buildTitleSearchString_with_author():
     ]
 
 
-def test_lambda_handler_workspace_missing(caplog, monkeypatch):
+def test_lambda_handler_workspace_missing(monkeypatch):
     monkeypatch.delenv("WORKSPACE")
     reload(wcd2reshare)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="WORKSPACE environment variable is required"):
         wcd2reshare.lambda_handler({}, {})
 
 
@@ -210,39 +197,41 @@ def test_lambda_handler_workspace_found(caplog):
     assert "Required WORKSPACE env is None" not in caplog.text
 
 
-def test_lambda_handler_with_query(baseURL):
+def test_lambda_handler_with_query(base_url):
     event = {"queryStringParameters": {"rft.isbn": "978-3-16-148410-0"}}
-    queryString = "type=ISN&lookfor=978-3-16-148410-0"
-    wcd2reshare.selectSearchStrategy = MagicMock(return_value=queryString)
-    response = wcd2reshare.lambda_handler(event, context={})
-    assert response["statusCode"] == 307
-    assert response["headers"]["Location"] == baseURL + queryString
+    quer_string = "type=ISN&lookfor=978-3-16-148410-0"
+    wcd2reshare.select_search_strategy = MagicMock(return_value=quer_string)
+    response = wcd2reshare.lambda_handler(event, _context={})
+    expected_status_code = 307
+    assert response["statusCode"] == expected_status_code
+    assert response["headers"]["Location"] == base_url + quer_string
 
 
-def test_lambda_handler_with_multiple_query(baseURL):
-    event = {
-        "queryStringParameters": {"rft.title": "salad days", "rft.aulast": "ranch"}
-    }
-    queryString = (
+def test_lambda_handler_with_multiple_query(base_url):
+    event = {"queryStringParameters": {"rft.title": "salad days", "rft.aulast": "ranch"}}
+    query_string = (
         "join=AND&type0%5B%5D=title&lookfor0%5B%5D=salad+days&"
         "type0%5B%5D=author&lookfor0%5B%5D=ranch"
     )
-    wcd2reshare.selectSearchStrategy = MagicMock(return_value=queryString)
-    response = wcd2reshare.lambda_handler(event, context={})
-    assert response["statusCode"] == 307
-    assert response["headers"]["Location"] == baseURL + queryString
+    wcd2reshare.select_search_strategy = MagicMock(return_value=query_string)
+    response = wcd2reshare.lambda_handler(event, _context={})
+    expected_status_code = 307
+    assert response["statusCode"] == expected_status_code
+    assert response["headers"]["Location"] == base_url + query_string
 
 
-def test_lambda_handler_without_query(baseURL):
-    response = wcd2reshare.lambda_handler(event={}, context={})
-    assert response["statusCode"] == 307
-    assert response["headers"]["Location"] == baseURL
+def test_lambda_handler_without_query(base_url):
+    response = wcd2reshare.lambda_handler(event={}, _context={})
+    expected_status_code = 307
+    assert response["statusCode"] == expected_status_code
+    assert response["headers"]["Location"] == base_url
 
 
-def test_lambda_handler_with_garbage_query(baseURL):
-    wcd2reshare.selectSearchStrategy = MagicMock(return_value="")
+def test_lambda_handler_with_garbage_query(base_url):
+    wcd2reshare.select_search_strategy = MagicMock(return_value="")
     response = wcd2reshare.lambda_handler(
-        event={"queryStringParameters": {"door": "knob"}}, context={}
+        event={"queryStringParameters": {"door": "knob"}}, _context={}
     )
-    assert response["statusCode"] == 307
-    assert response["headers"]["Location"] == baseURL
+    expected_status_code = 307
+    assert response["statusCode"] == expected_status_code
+    assert response["headers"]["Location"] == base_url

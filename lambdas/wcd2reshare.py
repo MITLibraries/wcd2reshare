@@ -1,7 +1,6 @@
 import logging
 import os
 import re
-import typing
 import urllib.parse
 
 import requests
@@ -23,12 +22,12 @@ if sentry_dsn := os.getenv("SENTRY_DSN"):
 
 
 def query_formatter(args: dict) -> dict:
-    """Transforms a dictionary of OpenURL request params to a dict of search
-    strings formatted for BorrowDirect / ReShare vuFind UI.
+    """Reformat openURL to vufind search strings.
 
+    Transforms a dictionary of OpenURL request params to a dict of search strings for
+    BorrowDirect / ReShare vuFind UI.
     """
-
-    searchStrings = {}
+    search_strings = {}
     if rft_id := args.get("rft_id"):
         # we expect the rft_id param to contain an 8 or 9 digit oclc number preceeded
         # by some stuff we don't care about
@@ -36,13 +35,13 @@ def query_formatter(args: dict) -> dict:
         # if we encounter the expected pattern extract the oclc number
         # from the first capture group
         if oclc_num := pattern.match(rft_id):
-            searchStrings["oclc"] = [
+            search_strings["oclc"] = [
                 ("type", "oclc_num"),
                 ("lookfor", oclc_num.group(1)),
             ]
 
     if isbn := args.get("rft.isbn"):
-        searchStrings["isbn"] = [("type", "ISN"), ("lookfor", isbn)]
+        search_strings["isbn"] = [("type", "ISN"), ("lookfor", isbn)]
 
     if title := (
         args.get("rft.title")
@@ -51,16 +50,15 @@ def query_formatter(args: dict) -> dict:
         or args.get("rft.jtitle")
     ):
         aulast = args.get("rft.aulast")
-        searchStrings["title"] = buildTitleSearchString(title, aulast)
+        search_strings["title"] = build_title_search_string(title, aulast)
     # urlencode the search strings
-    encodedSearchStrings = {
-        k: urllib.parse.urlencode(v) for k, v, in searchStrings.items()
-    }
-    return encodedSearchStrings
+    return {k: urllib.parse.urlencode(v) for k, v in search_strings.items()}
 
 
-def buildTitleSearchString(title: str, aulast: typing.Optional[str]) -> list:
-    """Takes title and aulast (author last name) values from openURL params and builds
+def build_title_search_string(title: str, aulast: str | None) -> list:
+    """Build a title search string for VuFind.
+
+    Takes title and aulast (author last name) values from openURL params and builds
     the correct search string syntax for VuFind. If aulast is None, only a title search
     is built. If an aulast is supplied, a combined title / author search is built.
     """
@@ -76,58 +74,54 @@ def buildTitleSearchString(title: str, aulast: typing.Optional[str]) -> list:
     return result
 
 
-def selectSearchStrategy(searchStrings: dict) -> str:
-    """takes a dict of search strings and checks whether each search
+def select_search_strategy(search_strings: dict) -> str:
+    """Select the VuFind search strategy.
+
+    takes a dict of search strings and checks whether each search
     string returns any results. Returns the first successful search string.
 
     Searches are tried in a specific order from most specific to least
     specific
     """
+    if (query_string := search_strings.get("oclc")) and search_has_results(query_string):
+        return query_string
 
-    if query_string := searchStrings.get("oclc"):
-        if searchHasResults(query_string):
-            return query_string
+    if (query_string := search_strings.get("isbn")) and search_has_results(query_string):
+        return query_string
 
-    if query_string := searchStrings.get("isbn"):
-        if searchHasResults(query_string):
-            return query_string
-
-    if query_string := searchStrings.get("title"):
-        if searchHasResults(query_string):
-            return query_string
+    if (query_string := search_strings.get("title")) and search_has_results(query_string):
+        return query_string
 
     return ""
 
 
-def searchHasResults(searchString: str) -> bool:
-    """check whether VuFind API returns any records for a given search string"""
-    vuFind_API = "https://borrowdirect.reshare.indexdata.com/api/v1/search?"
-    r = requests.get(vuFind_API + searchString)
+def search_has_results(search_string: str) -> bool:
+    """Check whether VuFind API returns any records for a given search string."""
+    vufind_api = "https://borrowdirect.reshare.indexdata.com/api/v1/search?"
+    r = requests.get(vufind_api + search_string, timeout=10)
     body = r.json()
-    if body.get("resultCount"):
-        return True
-    else:
-        return False
+    return bool(body.get("resultCount"))
 
 
-def lambda_handler(event: dict, context: dict) -> dict:
-    """Extracts query string parameters (if any exist) from incoming lambda function URL
+def lambda_handler(event: dict, _context: object) -> dict:
+    """Handle incoming requests to the lambda function.
+
+    Extracts query string parameters (if any exist) from incoming lambda function URL
     request. If there are query string parameters, try to build query string for
     Reshare / Vufind. Return an object representing an HTTP redirect response to
     ReShare / Vufind, using the query string if one was built.
     """
-
     if env is None:
-        raise ValueError("WORKSPACE environment variable is required")
+        error_message = "WORKSPACE environment variable is required"
+        raise ValueError(error_message)
 
     location = "https://borrowdirect.reshare.indexdata.com/Search/Results?"
     query_string = ""
     if args := event.get("queryStringParameters"):
-        query_string = selectSearchStrategy(query_formatter(args))
+        query_string = select_search_strategy(query_formatter(args))
         location = location + query_string
 
-    response = {
+    return {
         "headers": {"Location": location},
         "statusCode": 307,
     }
-    return response
