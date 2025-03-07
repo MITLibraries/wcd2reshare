@@ -7,16 +7,6 @@ import requests_mock
 from lambdas import wcd2reshare
 
 
-@pytest.fixture(autouse=True)
-def test_env(monkeypatch):
-    monkeypatch.setenv("WORKSPACE", "test")
-
-
-@pytest.fixture
-def base_url():
-    return "https://borrowdirect.reshare.indexdata.com/Search/Results?"
-
-
 def test_configures_sentry_if_dsn_present(caplog, monkeypatch):
     monkeypatch.setenv("SENTRY_DSN", "https://1234567890@00000.ingest.sentry.io/123456")
     reload(wcd2reshare)
