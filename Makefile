@@ -6,6 +6,13 @@ ECR_URL_DEV:=222053980223.dkr.ecr.us-east-1.amazonaws.com/wcd2reshare-dev
 FUNCTION_DEV:=wcd2reshare-dev
 ### End of Terraform-generated header                               ###
 
+SHELL=/bin/bash
+DATETIME:=$(shell date -u +%Y%m%dT%H%M%SZ)
+
+help: # Preview Makefile commands
+	@awk 'BEGIN { FS = ":.*#"; print "Usage:  make <target>\n\nTargets:" } \
+/^[-_[:alpha:]]+:.?*#/ { printf "  %-15s%s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+
 #######################
 # Dependency commands
 #######################
@@ -48,9 +55,8 @@ safety: # Check for security vulnerabilities and verify Pipfile.lock is up-to-da
 	pipenv check
 	pipenv verify
 
-lint-apply: # Apply changes with 'black' and resolve 'fixable errors' with 'ruff'
-	black-apply ruff-apply 
-
+lint-apply: black-apply ruff-apply # Apply changes with 'black' and resolve 'fixable errors' with 'ruff'
+	 
 black-apply: # Apply changes with 'black'
 	pipenv run black .
 
