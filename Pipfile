@@ -7,11 +7,11 @@ name = "pypi"
 sentry-sdk = "*"
 requests = "*"
 
-
 [dev-packages]
 black = "*"
 coveralls = "*"
 mypy = "*"
+pip-audit = "*"
 pre-commit = "*"
 pytest = "*"
 ruff = "*"
