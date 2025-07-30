@@ -97,7 +97,7 @@ def select_search_strategy(search_strings: dict) -> str:
 
 def search_has_results(search_string: str) -> bool:
     """Check whether VuFind API returns any records for a given search string."""
-    vufind_api = "https://borrowdirect.reshare.indexdata.com/api/v1/search?"
+    vufind_api = "https://mit-borrowdirect.reshare.indexdata.com/api/v1/search?"
     r = requests.get(vufind_api + search_string, timeout=10)
     body = r.json()
     return bool(body.get("resultCount"))
@@ -115,7 +115,7 @@ def lambda_handler(event: dict, _context: object) -> dict:
         error_message = "WORKSPACE environment variable is required"
         raise ValueError(error_message)
 
-    location = "https://borrowdirect.reshare.indexdata.com/Search/Results?"
+    location = "https://mit-borrowdirect.reshare.indexdata.com/Search/Results?"
     query_string = ""
     if args := event.get("queryStringParameters"):
         query_string = select_search_strategy(query_formatter(args))
