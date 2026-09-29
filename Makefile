@@ -123,13 +123,12 @@ update-lambda-dev: ## Updates the lambda with whatever is the most recent image 
 ####################################
 # SAM Lambda
 ####################################
-# NOTE: requires tests/sam/template.yaml, which does not yet exist in this repo.
 
 sam-build: # SAM: Build SAM image for running Lambda locally
 	sam build --template tests/sam/template.yaml
 
 sam-invoke: # SAM: Invoke lambda directly
-	echo '{"msg":"in a bottle"}' \
+	echo '{"queryStringParameters":{"rft.title": "baseketball"}}' \
 		| sam local invoke -e -
 
 ### Terraform-generated manual shortcuts for deploying to Stage. This requires  ###
