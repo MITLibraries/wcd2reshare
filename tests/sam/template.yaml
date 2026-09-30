@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Local SAM template for testing the wcd2reshare Lambda function
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 128
+
+Resources:
+  Wcd2ReshareFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Environment:
+        Variables:
+          WORKSPACE: dev
+    Metadata:
+      DockerContext: ../..
+      Dockerfile: Dockerfile
+      DockerTag: wcd2reshare-local

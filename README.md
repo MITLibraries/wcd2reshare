@@ -18,6 +18,14 @@ Because the metadata backing Worldcat Discovery may differ from the metadata bac
 - To lint the repo: `make lint`
 
 
+## Running Locally with SAM
+
+Requires the [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html).
+
+- Build the container: `make sam-build`
+- Invoke the function with a test event: `make sam-invoke`
+
+
 ## Running Locally with Docker
 
 <https://docs.aws.amazon.com/lambda/latest/dg/images-test.html>

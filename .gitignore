@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Container build tooling
+.arch_tag
+.tool-versions
+
+# SAM local testing
+.aws-sam/
+tests/sam/env.json
