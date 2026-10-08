@@ -2,6 +2,7 @@ from importlib import reload
 from unittest.mock import MagicMock
 
 import pytest
+import requests
 import requests_mock
 
 from lambdas import wcd2reshare
@@ -108,6 +109,24 @@ def test_build_title_search_string_no_author():
         ("type", "title"),
         ("lookfor", title),
     ]
+
+
+def test_search_has_results_is_false_on_connection_error():
+    search_string = "type=title&lookfor=basketball"
+    with requests_mock.Mocker() as m:
+        m.request(
+            requests_mock.ANY,
+            requests_mock.ANY,
+            exc=requests.exceptions.ConnectionError,
+        )
+        assert wcd2reshare.search_has_results(search_string) is False
+
+
+def test_search_has_results_is_false_on_bad_json():
+    search_string = "type=title&lookfor=basketball"
+    with requests_mock.Mocker() as m:
+        m.request(requests_mock.ANY, requests_mock.ANY, text="not valid json")
+        assert wcd2reshare.search_has_results(search_string) is False
 
 
 def test_select_search_strategy_no_success():

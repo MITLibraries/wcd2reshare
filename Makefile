@@ -17,7 +17,7 @@ help: # Preview Makefile commands
 
 # ensure OS binaries aren't called if naming conflict with Make recipes
 .PHONY: help install venv update test coveralls lint lint-fix security check-arch \
-	dist-dev publish-dev docker-clean sam-build sam-invoke update-lambda-dev \
+	dist-dev publish-dev docker-clean sam-build sam-http-run sam-http-ping update-lambda-dev \
 	dist-stage publish-stage update-lambda-stage
 
 ##############################################
@@ -127,9 +127,11 @@ update-lambda-dev: ## Updates the lambda with whatever is the most recent image 
 sam-build: # SAM: Build SAM image for running Lambda locally
 	sam build --template tests/sam/template.yaml
 
-sam-invoke: # SAM: Invoke lambda directly
-	echo '{"queryStringParameters":{"rft.title": "baseketball"}}' \
-		| sam local invoke -e -
+sam-http-run: # Run the Lambda locally as an HTTP server
+	sam local start-api --template tests/sam/template.yaml
+
+sam-http-ping: # Send a sample HTTP request to local SAM
+	curl -i 'http://localhost:3000/?rft.title=basketball'
 
 ### Terraform-generated manual shortcuts for deploying to Stage. This requires  ###
 ###   that ECR_NAME_STAGE, ECR_URL_STAGE, and FUNCTION_STAGE environment        ###

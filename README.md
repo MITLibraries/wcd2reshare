@@ -17,47 +17,45 @@ Because the metadata backing Worldcat Discovery may differ from the metadata bac
 - To run unit tests: `make test`
 - To lint the repo: `make lint`
 
+## Testing Locally with AWS SAM
 
-## Running Locally with SAM
+Requires the [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html).
 
-Requires the [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html).
+All commands below should be run from the root of the project (i.e. the same directory as the Dockerfile).
 
-- Build the container: `make sam-build`
-- Invoke the function with a test event: `make sam-invoke`
+### Build
 
-
-## Running Locally with Docker
-
-<https://docs.aws.amazon.com/lambda/latest/dg/images-test.html>
-
-- Build the container:
-
-```bash
-  docker build -t wcd2reshare:latest .
-  ```
-
-- Run the default handler for the container: 
-
-```bash
-docker run -e WORKSPACE=dev -p 9000:8080 wcd2reshare:latest
+```shell
+make sam-build
 ```
 
-- POST to the container: 
+### Invoking Lambda via HTTP requests
 
-```bash
-curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"queryStringParameters":{"rft.title": "baseketball"}}'
-```
+Runs the SAM-built container as a local HTTP server, similar to how the deployed Lambda is invoked via its Function URL.
 
-- Observe output:
+1. Start the HTTP server:
 
-```json
-{
-    "headers": {
-        "Location": "https://borrowdirect.reshare.indexdata.com/Search/Results?type=title&lookfor=baseketball"
-    },
-    "statusCode": 307
-}
-```
+   ```shell
+   make sam-http-run
+   ```
+
+   This starts a server at `http://localhost:3000`.
+
+2. In another terminal, send a test request:
+
+   ```shell
+   make sam-http-ping
+   ```
+
+   This sends a test request to the server you just started in step 1
+
+3. The response should include the following:
+   ```shell
+   HTTP/1.1 307 TEMPORARY REDIRECT
+   Location: https://mit-borrowdirect.reshare.indexdata.com/Search/Results?type=title&lookfor=basketball
+   ```
+
+
 
 ## Environment Variables
 

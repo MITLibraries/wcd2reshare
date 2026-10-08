@@ -3,20 +3,27 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   Local SAM template for testing the wcd2reshare Lambda function
 
-Globals:
-  Function:
-    Timeout: 10
-    MemorySize: 128
-
 Resources:
   Wcd2ReshareFunction:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
+      Timeout: 120
+      MemorySize: 128
+      # Matches the image tag `sam build` produces locally (logical ID + DockerTag below)
+      ImageUri: wcd2resharefunction:latest
+      Events:
+        Root:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
       Environment:
+        # All env vars used in the lambda must exist here, even just as placeholders.
         Variables:
-          WORKSPACE: dev
+          WORKSPACE: "dev"
+          SENTRY_DSN: ""
     Metadata:
       DockerContext: ../..
       Dockerfile: Dockerfile
-      DockerTag: wcd2reshare-local
+      DockerTag: latest
